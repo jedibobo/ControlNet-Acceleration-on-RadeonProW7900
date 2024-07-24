@@ -66,10 +66,65 @@ Swap:           14Gi        14Gi          0B
 ```
 
 #### Power Settings
-And put it in a data center with cooling systems, to reducing the heat pressure, I used [LACT](https://github.com/ilya-zlobintsev/LACT) to surpress the powerCap to 220W, and finally got about 73 degree celcius for this card.
+And put it in a data center with cooling systems which can control the environment temperature to about **19** degree celcius, to reducing the heat pressure, I used [LACT](https://github.com/ilya-zlobintsev/LACT) to surpress the powerCap to **220W**, and finally got about 73 degree celcius for this card.
 ![img](github_page/PwrCap.png)
 Note that this is only the apparent Pwr Consumption of the card, and the actual peak power consumption is more than this.
 #### OS version and driver choices
+The os versioni that shown in uname -a is:
+```shell
+❯ uname -a
+6.2.0-26-generic #26~22.04.1-Ubuntu
+```
+The version of RadeonPro for Enterprise GPU Driver is, and can be found [here](https://www.amd.com/en/support/download/linux-drivers.html):
+```shell 
+amdgpu-install_6.0.60002-1_all.deb # my version# 
+
+# install commands from AMD offical website with ROCm6.1.3
+sudo apt update
+wget https://repo.radeon.com/amdgpu-install/6.1.3/ubuntu/jammy/amdgpu-install_6.1.60103-1_all.deb
+sudo apt install ./amdgpu-install_6.1.60103-1_all.deb
+sudo amdgpu-install -y --usecase=graphics,rocm
+sudo usermod -a -G render,video $LOGNAME
+```
+#### Set Groups permissions
+```shell
+sudo usermod -a -G render,video $LOGNAME
+sudo reboot
+```
+#### Post-install verification checks
+Verify that the current user is added to the render and video groups.
+```shell
+# 1 check groups
+groups
+#output
+<username> adm cdrom sudo dip video plugdev render lpadmin lxd sambashare
+```
+
+Check if amdgpu kernel driver is installed.
+```shell
+# 2 check gpu driver kernel module
+dkms status
+
+#output
+amdgpu/x.x.x-xxxxxxx.xx.xx, x.x.x-xx-generic, x86_64: installed
+```
+Finally, check rocminfo:
+```shell
+# 3 check rocminfo (very important and can affect the following steps, especially the pytorch cuda support)
+❯ rocminfo
+
+# output
+[...]
+*******
+Agent 2
+*******
+  Name:                    gfx1100
+  Uuid:                    GPU-5ecee39292e80c37
+  Marketing Name:          Radeon RX 7900 XTX
+  Vendor Name:             AMD
+  [...]
+[...]
+```
 
 ### Software Preparations
 #### ROCm installation
@@ -86,7 +141,7 @@ First create a new conda environment
 
 Second replace the nvdia cuda pytorch to ROCm enabled Pytorch. The command can be found in Pytorch offical website.
 ```shell
-
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm6.0
 ```
 Third verify pytorch installation and GPU support:
 ```shell
