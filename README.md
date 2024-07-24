@@ -3,21 +3,17 @@ Accelerating ControlNet Pipeline through ROCm, Pytorch etc. Making it comparable
 
 
 # Contents
-- [Task Brief](#taskbrief)
-    - [Controlnet Introductions](#controlnetintro)
-- [Environment Settings](#environmentsettings)
-    - [Hardware Preparation and OS Installation](#hardwardandsysteminstall)
-    - [Software Preparations](#softwarepreparation) 
-- [Environment Settings](#environmentsettings)
-- [Environment Settings](#environmentsettings)
-- [Environment Settings](#environmentsettings)
+- [Task Brief](#task-brief)
+  - [Controlnet Introductions](#controlnet-introductions)
+- [Environment Settings](#environment-settings)
+  - [Hardware Preparation and OS Installation](#hardware-preparation-and-os-installation)
+  - [Software Preparations](#software-preparations) 
 
 ## Task Brief
 ### ControlNet Introductions
 
 ## Environment Settings
-### Hardware Preparations and OS Installation
+### Hardware Preparation and OS Installation
 
 ### Software Preparations
 
-## 
