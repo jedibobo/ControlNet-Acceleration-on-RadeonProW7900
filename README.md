@@ -8,8 +8,19 @@ Accelerating ControlNet Pipeline through ROCm, Pytorch etc. Making it comparable
   - [Stable Diffusion + ControlNet](#stable-diffusion--controlnet)
   - [How to Accelerate this generation pipeline](#how-to-accelerate-this-generation-pipeline)
 - [Environment Settings](#environment-settings)
-  - [Hardware Preparation and OS Installation](#hardware-preparation-and-os-installation)
-  - [Software Preparations](#software-preparations) 
+  - [Hardware Preparation and OS Setup](#hardware-preparation-and-os-setup)
+    - [Hardware elements](#hardware-elements)
+    - [Power Settings(optional)](#power-settingsoptional)
+    - [OS version and driver choices](#os-version-and-driver-choices)
+    - [Set Groups permissions](#set-groups-permissions)
+    - [Post-install verification checks](#post-install-verification-checks)
+  - [Software Preparations(Conda Environment)](#software-preparationsconda-environment)
+    - [Clone this repo](#clone-this-repo)
+    - [Conda Environment](#conda-environment)
+    - [Model Downloading](#model-downloading) 
+    - [Run the code](#run-the-code)
+- [Code explaination](#code-explaination)
+- [References](#references)
 
 ## Task Brief
 ### ControlNet Introductions
@@ -44,7 +55,7 @@ In this way, the ControlNet can **reuse** the SD encoder as a **deep, strong, ro
 ### How to Accelerate this generation pipeline
 
 ## Environment Settings
-### Hardware Preparation and OS Installation
+### Hardware Preparation and OS Setup
 #### Hardware elements 
 As for my choice of hardware, I consult the product brief on AMD offical websites about RadeonPro W7900(about 295W in docs, but I got 241W in rocm-smi), and pay more attention on stability of Power Supply, which I used a **1000W** in my case.
 
@@ -65,8 +76,9 @@ Mem:           125Gi        35Gi       951Mi       9.0Mi        89Gi        89Gi
 Swap:           14Gi        14Gi          0B
 ```
 
-#### Power Settings
-And put it in a data center with cooling systems which can control the environment temperature to about **19** degree celcius, to reducing the heat pressure, I used [LACT](https://github.com/ilya-zlobintsev/LACT) to surpress the powerCap to **220W**, and finally got about 73 degree celcius for this card.
+#### Power Settings(optional)
+No need when running this repo but recommended when training!
+To avoid overheat, I put the server in a data center with cooling systems which can control the environment temperature to about **19** degree celcius, to reducing the heat pressure, I used [LACT](https://github.com/ilya-zlobintsev/LACT) to surpress the powerCap to **220W**, and finally got about 73 degree celcius for this card.
 ![img](github_page/PwrCap.png)
 Note that this is only the apparent Pwr Consumption of the card, and the actual peak power consumption is more than this.
 #### OS version and driver choices
@@ -126,9 +138,8 @@ Agent 2
 [...]
 ```
 
-### Software Preparations
-#### ROCm installation
-
+### Software Preparations(Conda Environment)
+There are two ways to run this repo, one is through docker, and the other is through conda environment. Here I will introduce the conda environment settings.
 #### Clone this repo
 ```shell
 git clone https://github.com/jedibobo/ControlNet-Acceleration-on-RadeonProW7900.git
@@ -163,4 +174,58 @@ FAQ:
 #### Model Downloading
 Download model control_sd_canny.pth  from [huggingface](https://huggingface.co/lllyasviel/ControlNet/tree/main/models), and place it in models dir.
 
+#### Run the code
+```shell
+python3 compute_score.py
+```
+Output image:
+![img](github_page/conda-run-latency.png)
 
+#### Speed Comparison
+The speed comparison between A100 and RadeonPro W7900 is shown below table:
+| Model | A100 40G PCIe | RadeonPro W7900 |
+| --- | --- | --- |
+| Latency | 2100.738 ms | 2197.282 ms |
+| PowerCap | 250W | 241W |
+
+This shows potential of RadeonPro W7900 in accelerating the ControlNet pipeline, which is comparable to A100.
+
+
+### Software Preparations(Docker)(Optional method)
+For docker setup, I recommend to use root and the official ROCm pytorch docker image. The commands are shown below:
+```shell
+#1. Install Docker following https://docs.docker.com/engine/install/ubuntu/
+
+#2. Pull ROCm docker image
+docker pull rocm/pytorch:rocm6.1.3_ubuntu22.04_py3.10_pytorch_release-2.1.2
+
+#3. Run the docker image
+sudo docker run -it --network=host --device=/dev/kfd --device=/dev/dri -v $PWD:/workspace/ --group-add=video --ipc=host --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --shm-size 64G --name control-rocm613-pyt212 rocm/pytorch:rocm6.1.3_ubuntu22.04_py3.10_pytorch_release-2.1.2 bash
+
+#4. pull this repo and install python requirements
+git clone https://github.com/jedibobo/ControlNet-Acceleration-on-RadeonProW7900.git
+pip install -r requirements.txt
+# Note this step should not change the pytorch version in the docker.
+```
+
+## Code explaination
+class ```amdpervasivecontest``` with two methods: ```initialize``` and ```process```.
+
+```initialize method```: This method initializes some necessary objects and models. First, it creates a CannyDetector object for edge detection. Then, it loads a pre-trained model and places it on the GPU for computation. Finally, it creates a DDIMSampler object for sampling operations.
+
+```process method```: This method processes an input image based on various parameters. Here's a step-by-step breakdown:
+- It resizes the input image to the specified resolution.
+- It applies the Canny edge detection to the resized image.
+- It converts the detected map to a PyTorch tensor and prepares it for the model.
+- It sets a random seed for reproducibility if no seed is provided.
+- It prepares the conditioning for the model based on the prompts and control map.
+- It adjusts the model's control scales based on the guess_mode and strength parameters.
+- It uses the DDIMSampler to generate samples based on the provided parameters.
+- It decodes the samples to get the final images and returns them.
+
+## Some failed attempts
+### 1. ROCm Xformers Installation(both conda and docker)
+### 2.ROCm DeepSpeed Installation(docker)
+
+## References
+- [ControlNet official repository](https://github.com/lllyasviel/ControlNet)
